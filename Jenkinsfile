@@ -6,13 +6,8 @@ pipeline {
         jdk 'Java 17'  // Ensure that the JDK is configured in Jenkins
     }
 
-    environment {
-        DOCKER_IMAGE = "my-sample-app:${env.BUILD_ID}"
-        REMOTE_SERVER = "ec2-user@172.31.38.178"  // Change this to your server's SSH details
-    }
-
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
                 git 'https://github.com/Nivisha01/CI-CD-SampleWeb.git'
             }
@@ -25,32 +20,40 @@ pipeline {
                 sh 'ls -l target/'
             }
         }
-        stage('Build Docker Image') {
+        
+        stage('Docker Build and Tag') {
+           steps {
+              
+                sh 'docker build -t samplewebapp:latest .' 
+                sh 'docker tag samplewebapp nivi/samplewebapp:latest'
+                //sh 'docker tag samplewebapp nivi/samplewebapp:$BUILD_NUMBER'
+               
+          }
+        }
+        
+        stage('Publish image to Docker Hub') {
+          
             steps {
-                script {
-                    // Build the Docker image
-                    dockerImage = docker.build(DOCKER_IMAGE)
-                }
+        withDockerRegistry([ credentialsId: "DockerHub", url: "" ]) {
+          sh  'docker push nivi/samplewebapp:latest'
+        //  sh  'docker push nivi/samplewebapp:$BUILD_NUMBER' 
+        }
             }
         }
-        stage('Deploy to Docker Container') {
+
+        stage('Run Docker container on Jenkins Agent') {
+             
+            steps 
+			{
+                sh "docker run -d -p 8003:8080 nivi/samplewebapp"
+ 
+            }
+
+            stage('Run Docker container on remote hosts') {
+             
             steps {
-                script {
-                    // Save the Docker image to a tar file
-                    sh "docker save ${DOCKER_IMAGE} -o ${DOCKER_IMAGE}.tar"
-
-                    // Transfer the Docker image to the remote server
-                    sh "scp ${DOCKER_IMAGE}.tar ${REMOTE_SERVER}:/tmp"
-
-                    // Load the Docker image on the remote server
-                    sh "ssh ${REMOTE_SERVER} 'docker load -i /tmp/${DOCKER_IMAGE}.tar'"
-
-                    // Run the Docker container on the remote server
-                    sh "ssh ${REMOTE_SERVER} 'docker run -d -p 8003:8080 ${DOCKER_IMAGE}'"
-
-                    // Optionally, clean up the tar file on the remote server
-                    sh "ssh ${REMOTE_SERVER} 'rm /tmp/${DOCKER_IMAGE}.tar'"
-                }
+                sh "docker -H ssh://ec2-user@172.31.34.58 run -d -p 8003:8080 nivi/samplewebapp"
+            }
             }
         }
     }
