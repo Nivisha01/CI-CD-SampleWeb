@@ -1,47 +1,53 @@
 pipeline {
-    agent any 
+    agent any
+
+    tools {
+        maven "Maven"  // Specify the Maven installation in Jenkins
+        jdk 'Java 17'  // Ensure that the JDK is configured in Jenkins
+    }
+
+    environment {
+        DOCKER_IMAGE = "my-sample-app:${env.BUILD_ID}"
+        REMOTE_SERVER = "ec2-user@172.31.38.178"  // Change this to your server's SSH details
+    }
 
     stages {
-        stage('Build') {
+        stage('Clone Repository') {
             steps {
-                script {
-                    // Run your build tool (e.g., Maven) to create the WAR file
-                    sh 'mvn clean package' // Change this line if using a different build tool
-                }
+                git 'https://github.com/Nivisha01/CI-CD-SampleWeb.git'
             }
         }
-        
-        stage('Docker Build') {
+        stage('Build WAR') {
+            steps {
+                // Build the project and create a WAR file
+                sh 'mvn clean package'
+            }
+        }
+        stage('Build Docker Image') {
             steps {
                 script {
                     // Build the Docker image
-                    sh 'docker build -t nivisha/mywebapp:latest .'
+                    dockerImage = docker.build(DOCKER_IMAGE)
                 }
             }
         }
-        
-        stage('Push Docker Image') {
+        stage('Deploy to Docker Container') {
             steps {
                 script {
-                    // Login to Docker Hub
-                    withCredentials([usernamePassword(credentialsId: 'DockerHub', passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-                        sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin'
-                        
-                        // Push the Docker image to Docker Hub
-                        sh 'docker push nivisha/mywebapp:latest'
-                    }
-                }
-            }
-        }
-        
-        stage('Deploy') {
-            steps {
-                script {
-                    // Pull the Docker image on the production server
-                    sh 'ssh ec2-user@172.31.38.178 "docker pull nivisha/mywebapp:latest"'
-                    
-                    // Run the Docker container
-                    sh 'ssh ec2-user@172.31.38.178 "docker run -d -p 8003:8080 nivisha/mywebapp:latest"'
+                    // Save the Docker image to a tar file
+                    sh "docker save ${DOCKER_IMAGE} -o ${DOCKER_IMAGE}.tar"
+
+                    // Transfer the Docker image to the remote server
+                    sh "scp ${DOCKER_IMAGE}.tar ${REMOTE_SERVER}:/tmp"
+
+                    // Load the Docker image on the remote server
+                    sh "ssh ${REMOTE_SERVER} 'docker load -i /tmp/${DOCKER_IMAGE}.tar'"
+
+                    // Run the Docker container on the remote server
+                    sh "ssh ${REMOTE_SERVER} 'docker run -d -p 8003:8080 ${DOCKER_IMAGE}'"
+
+                    // Optionally, clean up the tar file on the remote server
+                    sh "ssh ${REMOTE_SERVER} 'rm /tmp/${DOCKER_IMAGE}.tar'"
                 }
             }
         }
