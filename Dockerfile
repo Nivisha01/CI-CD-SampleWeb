@@ -2,7 +2,7 @@
 FROM tomcat:latest
 
 # Maintainer information
-LABEL maintainer="Nivisha"
+LABEL maintainer="Nivi"
 
 # Set the working directory
 WORKDIR /usr/local/tomcat/webapps/
