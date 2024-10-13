@@ -12,11 +12,6 @@ pipeline {
     }
 
     stages {
-        stage('Cleanup Workspace') {
-            steps {
-                cleanWs()  // Clean the workspace to avoid conflicts
-            }
-        }
         stage('Clone Repository') {
             steps {
                 git 'https://github.com/Nivisha01/CI-CD-SampleWeb.git'
