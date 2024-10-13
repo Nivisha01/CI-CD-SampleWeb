@@ -12,6 +12,11 @@ pipeline {
     }
 
     stages {
+        stage('Cleanup Workspace') {
+            steps {
+                cleanWs()  // Clean the workspace to avoid conflicts
+            }
+        }
         stage('Clone Repository') {
             steps {
                 git 'https://github.com/Nivisha01/CI-CD-SampleWeb.git'
@@ -21,6 +26,8 @@ pipeline {
             steps {
                 // Build the project and create a WAR file
                 sh 'mvn clean package'
+                // List the target directory to verify the WAR file exists
+                sh 'ls -l target/'
             }
         }
         stage('Build Docker Image') {
