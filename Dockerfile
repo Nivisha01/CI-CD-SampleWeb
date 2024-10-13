@@ -8,7 +8,7 @@ LABEL maintainer="Nivi"
 WORKDIR /usr/local/tomcat/webapps/
 
 # Copy the WAR file into the Tomcat webapps directory
-ADD ./target/LoginWebApp.war /usr/local/tomcat/webapps/  # Adjusted for final WAR name
+COPY ./target/LoginWebApp.war /usr/local/tomcat/webapps/  # Adjusted for final WAR name
 
 # Expose the Tomcat port
 EXPOSE 8080
