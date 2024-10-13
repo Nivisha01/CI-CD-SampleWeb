@@ -8,7 +8,7 @@ LABEL maintainer="Nivisha"
 WORKDIR /usr/local/tomcat/webapps/
 
 # Copy the WAR file into the Tomcat webapps directory
-COPY ./target/LoginWebApp-1.war ./LoginWebApp.war
+COPY ./target/LoginWebApp-1.0-SNAPSHOT.war ./LoginWebApp.war
 
 # Expose the Tomcat port
 EXPOSE 8080
