@@ -29,18 +29,15 @@ pipeline {
                     sh 'git config user.email "nivishaanand01@gmail.com"'
                     sh 'git config user.name "Nivisha01"'
 
-                    // Copy the .war file to the root of the repository (or any other location)
-                    sh 'cp target/LoginWebApp.war .'
-
                     // Add the WAR file to the repository
                     sh 'git add LoginWebApp.war'
 
                     // Commit the new .war file
                     sh 'git commit -m "Add new WAR file [${BUILD_NUMBER}]"'
-
+                    
                     // Push changes to GitHub
-                    withCredentials([usernamePassword(credentialsId: '${GIT_CREDENTIALS_ID}', passwordVariable: 'GIT_TOKEN', usernameVariable: 'GIT_USER')]) {
-                        sh 'git push https://${GIT_USER}:${GIT_TOKEN}@github.com/your-repo.git HEAD:master'
+                    withCredentials([usernamePassword(credentialsId: 'GitHub', passwordVariable: 'GIT_TOKEN', usernameVariable: 'GIT_USER')]) {
+                        sh 'git push https://${GIT_USER}:${GIT_TOKEN}@github.com/Nivisha01/CI-CD-SampleWeb.git HEAD:master'
                     }
                 }
             }
@@ -67,7 +64,7 @@ pipeline {
         stage('Deploy to Production') {
             steps {
                 script {
-                    sshagent (credentials: ['${SSH_CREDENTIALS_ID}']) {
+                    sshagent (credentials: [SSH_CREDENTIALS_ID]) {
                         sh '''
                         ssh user@${PROD_SERVER} '
                         docker pull ${DOCKER_IMAGE} &&
