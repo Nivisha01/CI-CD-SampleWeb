@@ -2,8 +2,10 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "nivisha/myapp:${BUILD_NUMBER}"
+        DOCKER_IMAGE = "nivisha/my-app:${BUILD_NUMBER}"
         PROD_SERVER = "172.31.38.178"
+        SSH_CREDENTIALS_ID = "SSH-Jenkins"
+        GIT_CREDENTIALS_ID = "GitHub"  // GitHub credentials for pushing to repo
     }
 
     stages {
@@ -13,10 +15,33 @@ pipeline {
             }
         }
 
-        stage('Build the Application') {
+        stage('Build and Package WAR File') {
+            steps {
+                sh 'mvn clean package'  // This builds the WAR file
+                sh 'ls -l target/'      // List the contents of the target directory to verify the WAR file
+            }
+        }
+
+        stage('Push WAR File to GitHub') {
             steps {
                 script {
-                    sh 'mvn clean package'  // Replace with your actual build command
+                    // Configure git user details
+                    sh 'git config user.email "nivishaanand01@gmail.com"'
+                    sh 'git config user.name "Nivisha01"'
+
+                    // Copy the .war file to the root of the repository (or any other location)
+                    sh 'cp target/LoginWebApp.war .'
+
+                    // Add the WAR file to the repository
+                    sh 'git add LoginWebApp.war'
+
+                    // Commit the new .war file
+                    sh 'git commit -m "Add new WAR file [${BUILD_NUMBER}]"'
+
+                    // Push changes to GitHub
+                    withCredentials([usernamePassword(credentialsId: '${GIT_CREDENTIALS_ID}', passwordVariable: 'GIT_TOKEN', usernameVariable: 'GIT_USER')]) {
+                        sh 'git push https://${GIT_USER}:${GIT_TOKEN}@github.com/your-repo.git HEAD:master'
+                    }
                 }
             }
         }
@@ -29,20 +54,12 @@ pipeline {
             }
         }
 
-        stage('Login to Docker Hub') {
-            steps {
-                script {
-                    docker.withRegistry('', 'DockerHub') {
-                        // No need for manual docker login here
-                    }
-                }
-            }
-        }
-
         stage('Push Docker Image to Docker Hub') {
             steps {
                 script {
-                    docker.image("${DOCKER_IMAGE}").push()
+                    docker.withRegistry('', 'DockerHub') {
+                        docker.image("${DOCKER_IMAGE}").push()
+                    }
                 }
             }
         }
@@ -50,9 +67,9 @@ pipeline {
         stage('Deploy to Production') {
             steps {
                 script {
-                    sshagent(['SSH-Jenkins']) {  // Replace 'SSH-Jenkins' with your actual SSH credentials ID
+                    sshagent (credentials: ['${SSH_CREDENTIALS_ID}']) {
                         sh '''
-                        ssh jenkins@${PROD_SERVER} '
+                        ssh user@${PROD_SERVER} '
                         docker pull ${DOCKER_IMAGE} &&
                         docker stop myapp || true &&
                         docker rm myapp || true &&
